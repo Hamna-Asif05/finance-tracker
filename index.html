@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Finance Tracker Pro</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+body { background-color: #f4f7f6; }
+.dashboard-header { margin-bottom: 40px; }
+.summary-card {
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 6px 15px rgba(0,0,0,0.08);
+    transition: transform 0.3s ease;
+    background-color: #0d3b66 !important;
+    color: white !important;
+}
+.summary-card:hover { transform: translateY(-5px); }
+.card-title { font-size: 1rem; color: #a8dadc; }
+.card-value { font-size: 2rem; color: #f1faee; font-weight: bold; }
+.progress { height: 20px; margin-bottom: 10px; }
+</style>
+</head>
+<body>
+<div class="container-fluid p-4 p-md-5">
+
+<header class="d-flex justify-content-between align-items-center dashboard-header">
+    <h1>💵 Finance Tracker Dashboard</h1>
+</header>
+
+<h2 class="mb-4">Monthly Overview</h2>
+<div class="row g-4 mb-5">
+    <div class="col-lg-3 col-md-6">
+        <div class="summary-card">
+            <div class="card-title">Current Balance</div>
+            <div class="card-value" id="currentBalance">PKR 0</div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6">
+        <div class="summary-card">
+            <div class="card-title">Total Income</div>
+            <div class="card-value" id="totalIncome">PKR 0</div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6">
+        <div class="summary-card">
+            <div class="card-title">Total Expense</div>
+            <div class="card-value" id="totalExpense">PKR 0</div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6">
+        <div class="summary-card">
+            <div class="card-title">Savings Rate</div>
+            <div class="card-value" id="savingsRate">0%</div>
+        </div>
+    </div>
+</div>
+
+<h2 class="mb-4">Top 5 Expense Categories</h2>
+<div class="bg-white rounded-3 shadow-sm p-3 mb-5">
+    <div id="topExpensesList"></div>
+</div>
+
+<h2 class="mb-4">Budget Goals</h2>
+<div class="bg-white rounded-3 shadow-sm p-3 mb-5" id="budgetGoalsList"></div>
+
+<h2 class="mb-4">Transaction History</h2>
+<div class="row mb-4">
+    <div class="col-md-3">
+        <label class="form-label small">Filter By Type</label>
+        <select class="form-select" id="filterType">
+            <option value="all" selected>All</option>
+            <option value="income">Income</option>
+            <option value="expense">Expense</option>
+        </select>
+    </div>
+    <div class="col-md-5">
+        <label class="form-label small">Search (Category/Note)</label>
+        <input type="text" class="form-control" id="searchInput" placeholder="Search by category or note">
+    </div>
+</div>
+
+<div class="table-responsive bg-white rounded-3 shadow-sm p-3">
+    <table class="table table-striped table-hover align-middle">
+        <thead class="table-dark">
+            <tr>
+                <th>Amount (PKR)</th>
+                <th>Type</th>
+                <th>Category</th>
+                <th>Date</th>
+                <th>Note</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="transactionBody"></tbody>
+    </table>
+</div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// ---------- Dummy Data ----------
+let transactions = [
+    {id:1,type:'income',amount:50000,category:'Salary',date:'2025-11-01',note:'Monthly salary'},
+    {id:2,type:'expense',amount:12000,category:'Rent',date:'2025-11-02',note:'Apartment rent'},
+    {id:3,type:'expense',amount:8000,category:'Groceries',date:'2025-11-03',note:'Weekly groceries'},
+    {id:4,type:'income',amount:15000,category:'Freelance',date:'2025-11-05',note:'Project payment'},
+    {id:5,type:'expense',amount:5000,category:'Utilities',date:'2025-11-06',note:'Electricity bill'},
+    {id:6,type:'expense',amount:3000,category:'Travel',date:'2025-11-07',note:'Fuel for car'},
+];
+
+// ---------- Update Dashboard ----------
+function updateDashboard(){
+    const totalIncome = transactions.filter(t=>t.type==='income').reduce((a,b)=>a+b.amount,0);
+    const totalExpense = transactions.filter(t=>t.type==='expense').reduce((a,b)=>a+b.amount,0);
+    const balance = totalIncome - totalExpense;
+    const savingsRate = totalIncome ? ((balance/totalIncome)*100).toFixed(2) : 0;
+
+    document.getElementById('totalIncome').innerText = 'PKR ' + totalIncome.toLocaleString();
+    document.getElementById('totalExpense').innerText = 'PKR ' + totalExpense.toLocaleString();
+    document.getElementById('currentBalance').innerText = 'PKR ' + balance.toLocaleString();
+    document.getElementById('savingsRate').innerText = savingsRate + '%';
+}
+
+// ---------- Update Top Expenses ----------
+function updateTopExpenses(){
+    const expenses = transactions.filter(t=>t.type==='expense');
+    const categoryMap = {};
+    expenses.forEach(e=> categoryMap[e.category] = (categoryMap[e.category] || 0)+e.amount);
+    const top = Object.entries(categoryMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
+
+    const container = document.getElementById('topExpensesList');
+    container.innerHTML = '';
+    top.forEach(([cat,amt])=>{
+        container.innerHTML += `<div class="d-flex justify-content-between mb-2">
+            <span>${cat}</span> <strong>PKR ${amt.toLocaleString()}</strong>
+        </div>`;
+    });
+}
+
+// ---------- Budget Goals (Progress Bars) ----------
+const budgetLimits = {Rent:15000,Groceries:10000,Utilities:8000,Travel:5000};
+function updateBudgetGoals(){
+    const container = document.getElementById('budgetGoalsList');
+    container.innerHTML = '';
+    for(const [cat,limit] of Object.entries(budgetLimits)){
+        const spent = transactions.filter(t=>t.type==='expense' && t.category===cat).reduce((a,b)=>a+b.amount,0);
+        const percentage = Math.min((spent/limit)*100,100).toFixed(0);
+        const color = percentage>100?'bg-danger':'bg-success';
+        container.innerHTML += `<div class="mb-2"><strong>${cat}</strong> - PKR ${spent.toLocaleString()} / PKR ${limit.toLocaleString()}
+        <div class="progress"><div class="progress-bar ${color}" role="progressbar" style="width:${percentage}%"></div></div></div>`;
+    }
+}
+
+// ---------- Transaction Table ----------
+function updateTable(){
+    const tbody = document.getElementById('transactionBody');
+    const typeFilter = document.getElementById('filterType').value;
+    const searchValue = document.getElementById('searchInput').value.toLowerCase();
+    tbody.innerHTML = '';
+
+    transactions.filter(t=>{
+        const matchType = typeFilter==='all' || t.type===typeFilter;
+        const matchSearch = t.category.toLowerCase().includes(searchValue) || t.note.toLowerCase().includes(searchValue);
+        return matchType && matchSearch;
+    }).forEach(t=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${t.amount.toLocaleString()}</td><td>${t.type}</td><td>${t.category}</td>
+            <td>${t.date}</td><td>${t.note}</td>
+            <td><button class="btn btn-sm btn-danger" onclick="deleteTransaction(${t.id})">Delete</button></td>`;
+        tbody.appendChild(tr);
+    });
+}
+
+// ---------- Delete Transaction ----------
+function deleteTransaction(id){
+    transactions = transactions.filter(t=>t.id!==id);
+    updateAll();
+}
+
+// ---------- Update All ----------
+function updateAll(){
+    updateDashboard();
+    updateTopExpenses();
+    updateBudgetGoals();
+    updateTable();
+}
+
+// ---------- Event Listeners ----------
+document.getElementById('filterType').addEventListener('change', updateAll);
+document.getElementById('searchInput').addEventListener('input', updateAll);
+
+// ---------- Initialize ----------
+window.addEventListener('load', updateAll);
+
+</script>
+</body>
+</html>
